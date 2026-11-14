@@ -408,7 +408,7 @@ contains
             if (tabs("quality", [character(8) :: "Draft", "Normal", "High"], &
                 quality_tab)) continue
             call row_begin(6.0)
-            if (button("print", "Print", width=96.0, &
+            if (button("print", "Print", width=96.0, emphasis=UI_EMPHASIS_PRIMARY, &
                 enabled=photo%width > 0 .and. paper > 0)) call print_photo()
             if (button("fewer", "-", width=32.0)) copies = max(1, copies - 1)
             if (button("more", "+", width=32.0)) copies = min(99, copies + 1)

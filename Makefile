@@ -1,9 +1,8 @@
 FPM ?= fpm
 PREFIX ?= $(HOME)/.local
-# fortui's raylib window and CUPS printing service; OpenMP renders the page.
-FLAGS = FPM_FFLAGS="$${FPM_FFLAGS:-} -O2 -fopenmp -cpp -DENABLE_GUI=1 -DENABLE_PRINT=1" \
-	FPM_CFLAGS="$${FPM_CFLAGS:-} -DENABLE_GUI=1" \
-	FPM_LDFLAGS="$${FPM_LDFLAGS:-} -fopenmp -lraylib -lcups"
+# FortUI's SDL3 GPU backend and CUPS printing service; OpenMP renders the page.
+FLAGS = FPM_FFLAGS="$${FPM_FFLAGS:-} -O2 -fopenmp -cpp -DENABLE_SDL=1 -DENABLE_PRINT=1" \
+	FPM_LDFLAGS="$${FPM_LDFLAGS:-} -fopenmp -lSDL3 -lSDL3_ttf -lfontconfig -lcups"
 
 .PHONY: all build run test install clean
 
