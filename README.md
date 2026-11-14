@@ -22,7 +22,7 @@ border.
 
 ## Use
 
-fortphoto looks like your FortUI theme: `FORTUI_THEME=classic|material|material-dark`
+fortphoto looks like your FortUI theme: `FORTUI_THEME=fluent|fluent-dark|classic`
 or `theme = classic` in `~/.config/fortui/config`.
 
 ```sh
@@ -59,7 +59,7 @@ fortphoto is MIT licensed ([LICENSE](LICENSE)).
 
 On Arch Linux: `pacman -S gcc-fortran sdl3 sdl3_ttf fontconfig cups libjpeg-turbo libpng`,
 plus the fonts of the FortUI theme you use (Classic: `chicago95-fonts`,
-`ttf-perfectdos`; Material: `ttf-roboto`, `ttf-roboto-mono`).
+`ttf-perfectdos`; Fluent: Selawik or Segoe UI, `ttf-cascadia-code`).
 All C libraries are reached through `iso_c_binding`; there is no C code in
 fortphoto. JPEG and PNG decoding live in `src/photo_image.f90` alone, so they
 can later be replaced by a Fortran decoder.

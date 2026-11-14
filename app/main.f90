@@ -36,7 +36,8 @@ program fortphoto
     integer :: printer = 0, paper = 0, mtype = 0, source = 0, quality_tab = 3
     integer :: mode_tab = 1, copies = 1, zoom_pct = 100, gen = 0, dim_gen = 0, stat
     logical :: borderless = .true., all_sizes = .false., rotated = .false.
-    logical :: dirty = .true., hold = .false.
+    logical :: dirty = .true., hold = .false., printers_asked = .false.
+    integer :: frames = 0
     real :: ox = 0.0, oy = 0.0, preview_scale = 1.0, cw = 0.0, ch = 0.0
     real :: sheet_x = 0.0, sheet_y = 0.0, sheet_scale = 1.0
 
@@ -44,11 +45,12 @@ program fortphoto
     path = ""
     folder = "."
     call command_argument_count_path()
-    call load_printers()
-    if (len(path) > 0) call open_photo(path)
-
+    ! The window comes first; the printer is asked after the first frame, so a
+    ! slow or absent printer never delays the start.
+    allocate(printers(0))
     call ui_init("gui", 1280, 900, "fortphoto", stat=stat)
     if (stat /= 0) error stop "fortphoto needs a graphical display"
+    if (len(path) > 0) call open_photo(path)
     call ui_run(frame)
     call ui_shutdown()
 
@@ -69,6 +71,13 @@ contains
     end subroutine command_argument_count_path
 
     subroutine frame()
+        frames = frames + 1
+        if (frames == 1) call ui_request_frame()
+        if (frames == 2) then
+            call load_printers()
+            printers_asked = .true.
+            dirty = .true.
+        end if
         if (ui_key_pressed(KEY_ESCAPE)) call ui_request_quit()
         if (ui_key_pressed(KEY_ARROW_RIGHT)) call step_photo(1)
         if (ui_key_pressed(KEY_ARROW_LEFT)) call step_photo(-1)
@@ -371,6 +380,8 @@ contains
 
         if (.not. print_available()) then
             call text("Built without printing.", tone=UI_TONE_NEGATIVE)
+        else if (.not. printers_asked) then
+            call text("Looking for printers...", style=UI_CAPTION)
         else if (size(printers) == 0) then
             call text("No printer is set up.", tone=UI_TONE_NEGATIVE)
         else
