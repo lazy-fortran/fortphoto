@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=fortphoto
+GenericName=Photo printing
+Comment=Print a photo borderless, filled and cropped or fitted, with an exact preview
+Exec=fortphoto %f
+Icon=printer
+Terminal=false
+Categories=Graphics;Photography;
+MimeType=image/jpeg;image/png;

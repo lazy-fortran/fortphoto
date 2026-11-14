@@ -1,0 +1,23 @@
+name = "fortphoto"
+version = "0.1.0"
+license = "MIT"
+author = "Christopher Albert"
+maintainer = "albert@tugraz.at"
+copyright = "Copyright 2026, Christopher Albert"
+description = "Photo printing with an exact preview: fill and crop or fit, borderless"
+
+[build]
+auto-executables = true
+auto-tests = true
+link = ["turbojpeg", "png"]
+
+[fortran]
+implicit-typing = false
+implicit-external = false
+source-form = "free"
+
+[preprocess]
+cpp.suffixes = ["f90"]
+
+[dependencies]
+fortui = { git = "https://github.com/lazy-fortran/fortui.git", rev = "62d7ba126bbeb801332072cd34d4517bdc472a5f" }
