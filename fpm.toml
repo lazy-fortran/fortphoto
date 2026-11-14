@@ -1,5 +1,5 @@
 name = "fortphoto"
-version = "0.1.0"
+version = "0.0.1"
 license = "MIT"
 author = "Christopher Albert"
 maintainer = "albert@tugraz.at"
@@ -9,7 +9,7 @@ description = "Photo printing with an exact preview: fill and crop or fit, borde
 [build]
 auto-executables = true
 auto-tests = true
-link = ["turbojpeg", "png"]
+link = ["turbojpeg", "png", "z"]
 
 [fortran]
 implicit-typing = false
@@ -20,4 +20,4 @@ source-form = "free"
 cpp.suffixes = ["f90"]
 
 [dependencies]
-fortui = { git = "https://github.com/lazy-fortran/fortui.git", rev = "62d7ba126bbeb801332072cd34d4517bdc472a5f" }
+fortui = { git = "https://github.com/lazy-fortran/fortui.git", rev = "aa2f33cd62e8a5d7c0f9b40fe01ff41d9ba7cf10" }
