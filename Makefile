@@ -20,7 +20,9 @@ test:
 # The program and a desktop entry, so file managers offer "Open With fortphoto"
 # for JPEG and PNG files.
 install:
-	$(FLAGS) $(FPM) install --prefix "$(PREFIX)"
+	$(FLAGS) $(FPM) install --prefix "$(CURDIR)/build/stage"
+	# A new file, not an overwrite: a running fortphoto keeps its program.
+	install -Dm755 build/stage/bin/fortphoto "$(PREFIX)/bin/fortphoto"
 	install -Dm644 data/fortphoto.desktop "$(PREFIX)/share/applications/fortphoto.desktop"
 	sed -i 's|^Exec=.*|Exec=$(PREFIX)/bin/fortphoto %f|' \
 		"$(PREFIX)/share/applications/fortphoto.desktop"
