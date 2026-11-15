@@ -1,11 +1,11 @@
 module photo_image
     !! Photos as 8-bit sRGB arrays rgb(3, width, height), row 1 at the top.
     !!
-    !! JPEG is decoded by libturbojpeg and PNG by libpng's simplified API, both
-    !! through iso_c_binding; the EXIF orientation of a JPEG is read here and
-    !! applied, so a photo taken upright is upright.
+    !! JPEG and PNG are decoded by fortimg; the EXIF orientation of a JPEG is
+    !! read here and applied, so a photo taken upright is upright.
     use iso_c_binding
     use iso_fortran_env, only: int8, int32
+    use fortimg, only: fortimg_image_t => image_t, image_decode, image_convert, IMG_OK
     implicit none
     private
 
@@ -16,17 +16,7 @@ module photo_image
 
     public :: image_load, image_shrink, image_orient, exif_orientation, image_glob
 
-    integer(c_int), parameter :: TJINIT_DECOMPRESS = 1, TJPARAM_JPEGWIDTH = 5, &
-        TJPARAM_JPEGHEIGHT = 6, TJPF_RGB = 0
-    integer(c_int32_t), parameter :: PNG_IMAGE_VERSION = 1, PNG_FORMAT_RGB = 2
     integer(c_int), parameter :: GLOB_BRACE = 1024
-
-    type, bind(C) :: png_image_t
-        type(c_ptr) :: opaque
-        integer(c_int32_t) :: version, width, height, format, flags, colormap_entries, &
-            warning_or_error
-        character(kind=c_char) :: message(64)
-    end type png_image_t
 
     type, bind(C) :: glob_t
         integer(c_size_t) :: pathc
@@ -37,54 +27,6 @@ module photo_image
     end type glob_t
 
     interface
-        type(c_ptr) function tj3Init(init_type) bind(C, name="tj3Init")
-            import :: c_ptr, c_int
-            integer(c_int), value :: init_type
-        end function
-        subroutine tj3Destroy(handle) bind(C, name="tj3Destroy")
-            import :: c_ptr
-            type(c_ptr), value :: handle
-        end subroutine
-        integer(c_int) function tj3DecompressHeader(handle, buf, size) &
-                bind(C, name="tj3DecompressHeader")
-            import :: c_ptr, c_int, c_size_t
-            type(c_ptr), value :: handle, buf
-            integer(c_size_t), value :: size
-        end function
-        integer(c_int) function tj3Get(handle, param) bind(C, name="tj3Get")
-            import :: c_ptr, c_int
-            type(c_ptr), value :: handle
-            integer(c_int), value :: param
-        end function
-        integer(c_int) function tj3Decompress8(handle, buf, size, dst, pitch, fmt) &
-                bind(C, name="tj3Decompress8")
-            import :: c_ptr, c_int, c_size_t
-            type(c_ptr), value :: handle, buf, dst
-            integer(c_size_t), value :: size
-            integer(c_int), value :: pitch, fmt
-        end function
-        type(c_ptr) function tj3GetErrorStr(handle) bind(C, name="tj3GetErrorStr")
-            import :: c_ptr
-            type(c_ptr), value :: handle
-        end function
-        integer(c_int) function png_image_begin_read_from_memory(image, memory, size) &
-                bind(C, name="png_image_begin_read_from_memory")
-            import :: png_image_t, c_ptr, c_int, c_size_t
-            type(png_image_t) :: image
-            type(c_ptr), value :: memory
-            integer(c_size_t), value :: size
-        end function
-        integer(c_int) function png_image_finish_read(image, background, buffer, &
-                row_stride, colormap) bind(C, name="png_image_finish_read")
-            import :: png_image_t, c_ptr, c_int, c_int32_t
-            type(png_image_t) :: image
-            type(c_ptr), value :: background, buffer, colormap
-            integer(c_int32_t), value :: row_stride
-        end function
-        subroutine png_image_free(image) bind(C, name="png_image_free")
-            import :: png_image_t
-            type(png_image_t) :: image
-        end subroutine
         integer(c_int) function c_glob(pattern, flags, errfunc, g) bind(C, name="glob")
             import :: c_char, c_int, c_funptr, glob_t
             character(kind=c_char), intent(in) :: pattern(*)
@@ -128,63 +70,34 @@ contains
             return
         end if
         if (byte(bytes, 1) == 255 .and. byte(bytes, 2) == 216) then
-            call load_jpeg(bytes, n, img, message)
+            call decode(bytes(1:n), "JPEG", img, message)
             if (len(message) == 0) call image_orient(img, exif_orientation(bytes(1:n)))
         else if (byte(bytes, 1) == 137 .and. byte(bytes, 2) == 80 .and. &
                 byte(bytes, 3) == 78 .and. byte(bytes, 4) == 71) then
-            call load_png(bytes, n, img, message)
+            call decode(bytes(1:n), "PNG", img, message)
         else
             message = path // " is neither JPEG nor PNG"
         end if
     end subroutine image_load
 
-    subroutine load_jpeg(bytes, n, img, message)
-        integer(int8), intent(in), target :: bytes(:)
-        integer, intent(in) :: n
-        type(image_t), intent(inout), target :: img
+    subroutine decode(bytes, kind, img, message)
+        integer(int8), intent(in) :: bytes(:)
+        character(*), intent(in) :: kind
+        type(image_t), intent(inout) :: img
         character(len=:), allocatable, intent(inout) :: message
-        type(c_ptr) :: tj
+        type(fortimg_image_t) :: f
+        integer :: status
 
-        tj = tj3Init(TJINIT_DECOMPRESS)
-        if (.not. c_associated(tj)) then
-            message = "libturbojpeg did not start"
+        call image_decode(bytes, f, status)
+        if (status /= IMG_OK) then
+            message = "not a readable " // kind
             return
         end if
-        if (tj3DecompressHeader(tj, c_loc(bytes), int(n, c_size_t)) /= 0) then
-            message = "not a readable JPEG: " // f_str(tj3GetErrorStr(tj))
-        else
-            img%width = tj3Get(tj, TJPARAM_JPEGWIDTH)
-            img%height = tj3Get(tj, TJPARAM_JPEGHEIGHT)
-            allocate(img%rgb(3, img%width, img%height))
-            if (tj3Decompress8(tj, c_loc(bytes), int(n, c_size_t), c_loc(img%rgb), &
-                0_c_int, TJPF_RGB) /= 0) then
-                message = "JPEG decoding failed: " // f_str(tj3GetErrorStr(tj))
-            end if
-        end if
-        call tj3Destroy(tj)
-    end subroutine load_jpeg
-
-    subroutine load_png(bytes, n, img, message)
-        integer(int8), intent(in), target :: bytes(:)
-        integer, intent(in) :: n
-        type(image_t), intent(inout), target :: img
-        character(len=:), allocatable, intent(inout) :: message
-        type(png_image_t) :: p
-
-        p%opaque = c_null_ptr
-        p%version = PNG_IMAGE_VERSION
-        if (png_image_begin_read_from_memory(p, c_loc(bytes), int(n, c_size_t)) == 0) then
-            message = "not a readable PNG"
-            return
-        end if
-        p%format = PNG_FORMAT_RGB
-        img%width = int(p%width)
-        img%height = int(p%height)
-        allocate(img%rgb(3, img%width, img%height))
-        if (png_image_finish_read(p, c_null_ptr, c_loc(img%rgb), 0_c_int32_t, &
-            c_null_ptr) == 0) message = "PNG decoding failed"
-        call png_image_free(p)
-    end subroutine load_png
+        call image_convert(f, 3)
+        img%width = f%width
+        img%height = f%height
+        call move_alloc(f%pixels, img%rgb)
+    end subroutine decode
 
     pure integer function byte(b, k)
         integer(int8), intent(in) :: b(:)

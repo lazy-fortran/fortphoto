@@ -50,19 +50,15 @@ fortphoto is MIT licensed ([LICENSE](LICENSE)).
 
 | Dependency | Used for | Licence |
 |---|---|---|
-| [FortUI](https://github.com/lazy-fortran/fortui) | window, controls, preview canvas, printing service | MIT |
-| SDL3, SDL3_ttf, fontconfig | FortUI's desktop backend (GPU drawing, text, fonts) | zlib; zlib; MIT-style |
-| libcups 2.3 or later | printing (through FortUI) | Apache-2.0 |
-| libturbojpeg (libjpeg-turbo 3) | JPEG decoding | BSD-3-Clause, IJG, zlib |
-| libpng 1.6 | PNG decoding | libpng/PNG Reference Library |
+| [FortUI](https://github.com/lazy-fortran/fortui) | window (Vulkan), controls, preview canvas, printing over IPP | MIT |
+| [fortimg](https://github.com/lazy-fortran/fortimg) | JPEG and PNG decoding | MIT |
 | gfortran with OpenMP, fpm | building | GPL-3.0 with runtime exception; MIT |
 
-On Arch Linux: `pacman -S gcc-fortran sdl3 sdl3_ttf fontconfig cups libjpeg-turbo libpng`,
-plus the fonts of the FortUI theme you use (Classic: `chicago95-fonts`,
-`ttf-perfectdos`; Fluent: Selawik or Segoe UI, `ttf-cascadia-code`).
-All C libraries are reached through `iso_c_binding`; there is no C code in
-fortphoto. JPEG and PNG decoding live in `src/photo_image.f90` alone, so they
-can later be replaced by a Fortran decoder.
+fortphoto and its Fortran dependencies need no C library at build time. At run
+time a window needs X11 and a Vulkan driver, which FortUI opens itself, plus the
+fonts of the FortUI theme you use (Classic: `chicago95-fonts`, `ttf-perfectdos`;
+Fluent: Selawik or Segoe UI, `ttf-cascadia-code`). Printing talks IPP directly
+to the CUPS server or printer.
 
 ## Known limits
 

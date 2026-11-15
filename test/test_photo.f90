@@ -1,8 +1,9 @@
 program test_photo
     !! Layout arithmetic worked out by hand, the rendered page against it,
     !! quarter turns, EXIF orientation parsing and applying, and decoding of
-    !! small JPEG/PNG fixtures (test/fixtures/README.md).
+    !! small JPEG and PNG files that the test writes itself.
     use iso_fortran_env, only: int8
+    use fortimg, only: fortimg_image_t => image_t, png_encode
     use photo_layout, only: layout_t, layout_compute, layout_render, rotate_cw, &
         layout_offset_by, MODE_FILL, MODE_FIT
     use photo_image, only: image_t, image_load, image_orient, exif_orientation, &
@@ -10,6 +11,7 @@ program test_photo
     implicit none
 
     integer :: failures = 0
+    integer :: j_
 
     call test_fill_fit()
     call test_render()
@@ -159,30 +161,76 @@ contains
     end subroutine test_exif
 
     subroutine test_decode()
+        character(*), parameter :: dir = "build/test_photo_files"
         type(image_t) :: img, small
+        type(fortimg_image_t) :: src
+        integer(int8), allocatable :: png(:)
         character(len=:), allocatable :: msg
         character(len=:), allocatable :: names(:)
 
-        call image_load("test/fixtures/rgb-2x2.png", img, msg)
+        call execute_command_line("rm -rf " // dir // " && mkdir -p " // dir)
+        ! 2 x 2 RGB: red and green in the top row, blue and white below.
+        src%width = 2
+        src%height = 2
+        src%channels = 3
+        allocate(src%pixels(3, 2, 2))
+        src%pixels(:, 1, 1) = b([255, 0, 0])
+        src%pixels(:, 2, 1) = b([0, 255, 0])
+        src%pixels(:, 1, 2) = b([0, 0, 255])
+        src%pixels(:, 2, 2) = b([255, 255, 255])
+        call png_encode(src, png)
+        call write_file(dir // "/rgb-2x2.png", png)
+        call write_file(dir // "/grey-16x8.jpg", grey_jpeg())
+        call write_file(dir // "/notes.txt", b([110, 111, 116, 32, 97, 32, 112, 104, 111]))
+        call write_file(dir // "/broken.jpg", b([255, 216, 255, 217, 0, 0, 0, 0]))
+
+        call image_load(dir // "/rgb-2x2.png", img, msg)
         call check(len(msg) == 0 .and. img%width == 2 .and. img%height == 2, "PNG size")
-        if (len(msg) == 0) call check(all(img%rgb(:, 1, 1) == b([255, 0, 0])) .and. &
-            all(img%rgb(:, 2, 1) == b([0, 255, 0])) .and. &
-            all(img%rgb(:, 1, 2) == b([0, 0, 255])), "PNG pixels")
-        call image_load("test/fixtures/red-16x8.jpg", img, msg)
+        if (len(msg) == 0) call check(all(img%rgb == src%pixels), "PNG pixels")
+        call image_load(dir // "/grey-16x8.jpg", img, msg)
         call check(len(msg) == 0 .and. img%width == 16 .and. img%height == 8, "JPEG size")
-        if (len(msg) == 0) call check(all(abs(iand(int(img%rgb(:, 9, 4)), 255) - &
-            [200, 30, 60]) <= 3), "JPEG colour within quantisation")
+        if (len(msg) == 0) call check(size(img%rgb, 1) == 3 .and. all(img%rgb == int(-128, int8)), &
+            "JPEG of DC 0 decodes to grey 128")
         if (len(msg) == 0) then
             call image_shrink(img, 4, small)
             call check(small%width == 4 .and. small%height == 2, "shrink by a box of four")
         end if
-        call image_load("test/fixtures/README.md", img, msg)
+        call image_load(dir // "/broken.jpg", img, msg)
+        call check(msg == "not a readable JPEG", "a broken JPEG is refused")
+        call image_load(dir // "/notes.txt", img, msg)
         call check(len(msg) > 0, "other files are refused")
-        call image_glob("test/fixtures", names)
-        call check(size(names) == 2, "two photos in the fixtures folder")
-        if (size(names) == 2) call check(trim(names(1)) == &
-            "test/fixtures/red-16x8.jpg" .and. trim(names(2)) == &
-            "test/fixtures/rgb-2x2.png", "sorted paths of the photos")
+        call image_glob(dir, names)
+        call check(size(names) == 3, "three photos in the folder")
+        if (size(names) == 3) call check(trim(names(1)) == dir // "/broken.jpg" .and. &
+            trim(names(2)) == dir // "/grey-16x8.jpg" .and. &
+            trim(names(3)) == dir // "/rgb-2x2.png", "sorted paths of the photos")
     end subroutine test_decode
+
+    function grey_jpeg() result(j)
+        !! Baseline JPEG, 16 x 8, one grey component, quantisation all 1. The DC
+        !! and AC Huffman tables each hold one symbol with the code "0": DC
+        !! category 0 and end of block. Both blocks are "0 0", so every sample
+        !! is the level shift 128; the four remaining bits are padding ones.
+        integer(int8), allocatable :: j(:)
+        integer :: one(16)
+        one = 0
+        one(1) = 1
+        j = b([255, 216, 255, 219, 0, 67, 0, [(1, j_ = 1, 64)], &
+            255, 192, 0, 11, 8, 0, 8, 0, 16, 1, 1, 17, 0, &
+            255, 196, 0, 20, 0, one, 0, &
+            255, 196, 0, 20, 16, one, 0, &
+            255, 218, 0, 8, 1, 1, 0, 0, 63, 0, &
+            15, 255, 217])
+    end function grey_jpeg
+
+    subroutine write_file(path, bytes)
+        character(*), intent(in) :: path
+        integer(int8), intent(in) :: bytes(:)
+        integer :: u
+        open (newunit=u, file=path, access="stream", form="unformatted", &
+            status="replace", action="write")
+        write (u) bytes
+        close (u)
+    end subroutine write_file
 
 end program test_photo
