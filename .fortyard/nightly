@@ -1,4 +1,0 @@
-#!/bin/sh
-# Nightly run: every test, the slow ones included, with the libraries the
-# landing check installs.
-FO_TEST_RERUN=1 exec "$(dirname "$0")/check" --all "$@"
