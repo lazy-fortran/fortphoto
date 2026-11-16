@@ -168,7 +168,13 @@ contains
         character(len=:), allocatable :: msg
         character(len=:), allocatable :: names(:)
 
+#ifdef _WIN32
+        call execute_command_line('if exist "build\test_photo_files" ' // &
+            'rmdir /s /q "build\test_photo_files"')
+        call execute_command_line('mkdir "build\test_photo_files"')
+#else
         call execute_command_line("rm -rf " // dir // " && mkdir -p " // dir)
+#endif
         ! 2 x 2 RGB: red and green in the top row, blue and white below.
         src%width = 2
         src%height = 2

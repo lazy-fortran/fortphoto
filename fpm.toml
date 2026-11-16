@@ -19,5 +19,12 @@ source-form = "free"
 cpp.suffixes = ["f90"]
 
 [dependencies]
-fortui = { git = "https://github.com/lazy-fortran/fortui.git", rev = "8bcc196573da131df52916b172bfebcbc1822529" }
+fortui = { git = "https://github.com/lazy-fortran/fortui.git", rev = "ac07f9b58ff294cbd4df1881f10feb4d237c3dad" }
 fortimg = { git = "https://github.com/lazy-fortran/fortimg.git", rev = "22716c3ed5424e1e463bde5e6bc0daf40d78cb2e" }
+
+[features]
+platform.macos.preprocess.cpp.macros = ["__APPLE__"]
+platform.windows.preprocess.cpp.macros = ["_WIN32"]
+
+[profiles]
+default = ["platform"]

@@ -3,7 +3,7 @@ module photo_image
     !!
     !! JPEG and PNG are decoded by fortimg; the EXIF orientation of a JPEG is
     !! read here and applied, so a photo taken upright is upright.
-    use iso_c_binding
+    use fortui_files, only: file_entry_t, file_list, file_join, file_read
     use iso_fortran_env, only: int8, int32
     use fortimg, only: fortimg_image_t => image_t, image_decode, image_convert, IMG_OK
     implicit none
@@ -14,35 +14,8 @@ module photo_image
         integer(int8), allocatable :: rgb(:, :, :)
     end type image_t
 
-    public :: image_load, image_shrink, image_orient, exif_orientation, image_glob
+    public :: image_load, image_load_bytes, image_shrink, image_orient, exif_orientation, image_glob
 
-    integer(c_int), parameter :: GLOB_BRACE = 1024
-
-    type, bind(C) :: glob_t
-        integer(c_size_t) :: pathc
-        type(c_ptr) :: pathv
-        integer(c_size_t) :: offs
-        ! Room for the rest of glibc's glob_t (flags and callbacks).
-        integer(c_int64_t) :: rest(16)
-    end type glob_t
-
-    interface
-        integer(c_int) function c_glob(pattern, flags, errfunc, g) bind(C, name="glob")
-            import :: c_char, c_int, c_funptr, glob_t
-            character(kind=c_char), intent(in) :: pattern(*)
-            integer(c_int), value :: flags
-            type(c_funptr), value :: errfunc
-            type(glob_t) :: g
-        end function
-        subroutine c_globfree(g) bind(C, name="globfree")
-            import :: glob_t
-            type(glob_t) :: g
-        end subroutine
-        integer(c_size_t) function c_strlen(s) bind(C, name="strlen")
-            import :: c_ptr, c_size_t
-            type(c_ptr), value :: s
-        end function
-    end interface
 
 contains
 
@@ -52,21 +25,20 @@ contains
         type(image_t), intent(out) :: img
         character(len=:), allocatable, intent(out) :: message
         integer(int8), allocatable, target :: bytes(:)
-        integer :: u, n, ios
+        call file_read(path, bytes, message)
+        if (len(message) > 0) return
+        call image_load_bytes(bytes, img, message)
+    end subroutine image_load
 
+    subroutine image_load_bytes(bytes, img, message)
+        integer(int8), intent(in) :: bytes(:)
+        type(image_t), intent(out) :: img
+        character(:), allocatable, intent(out) :: message
+        integer :: n
         message = ""
-        open (newunit=u, file=path, access="stream", form="unformatted", status="old", &
-            action="read", iostat=ios)
-        if (ios /= 0) then
-            message = "cannot open " // path
-            return
-        end if
-        inquire (unit=u, size=n)
-        allocate(bytes(max(n, 1)))
-        if (n > 0) read (u, iostat=ios) bytes(1:n)
-        close (u)
-        if (ios /= 0 .or. n < 8) then
-            message = "cannot read " // path
+        n = size(bytes)
+        if (n < 8) then
+            message = "This file is too short to be a photo."
             return
         end if
         if (byte(bytes, 1) == 255 .and. byte(bytes, 2) == 216) then
@@ -76,9 +48,9 @@ contains
                 byte(bytes, 3) == 78 .and. byte(bytes, 4) == 71) then
             call decode(bytes(1:n), "PNG", img, message)
         else
-            message = path // " is neither JPEG nor PNG"
+            message = "Choose a JPEG or PNG photo."
         end if
-    end subroutine image_load
+    end subroutine image_load_bytes
 
     subroutine decode(bytes, kind, img, message)
         integer(int8), intent(in) :: bytes(:)
@@ -244,44 +216,24 @@ contains
         !! JPEG and PNG files in `dir`, sorted by name.
         character(*), intent(in) :: dir
         character(len=:), allocatable, intent(out) :: paths(:)
-        type(glob_t) :: g
-        type(c_ptr), pointer :: v(:)
+        type(file_entry_t), allocatable :: entries(:)
+        character(:), allocatable :: message
         integer :: k, n, longest
-
-        g%pathc = 0
+        call file_list(dir, entries, message, ".jpg,.jpeg,.png")
         n = 0
-        if (c_glob(trim(dir) // "/*.{jpg,JPG,jpeg,JPEG,png,PNG}" // c_null_char, &
-            GLOB_BRACE, c_null_funptr, g) == 0) n = int(g%pathc)
         longest = 1
-        if (n > 0) then
-            call c_f_pointer(g%pathv, v, [n])
-            do k = 1, n
-                longest = max(longest, int(c_strlen(v(k))))
-            end do
-        end if
-        allocate(character(len=longest) :: paths(n))
-        do k = 1, n
-            paths(k) = f_str(v(k))
+        do k = 1, size(entries)
+            if (entries(k)%directory) cycle
+            n = n + 1
+            longest = max(longest, len(file_join(dir, entries(k)%name)))
         end do
-        call c_globfree(g)
+        allocate(character(longest) :: paths(n))
+        n = 0
+        do k = 1, size(entries)
+            if (entries(k)%directory) cycle
+            n = n + 1
+            paths(n) = file_join(dir, entries(k)%name)
+        end do
     end subroutine image_glob
-
-    function f_str(p) result(s)
-        type(c_ptr), intent(in) :: p
-        character(len=:), allocatable :: s
-        character(kind=c_char), pointer :: chars(:)
-        integer :: n, k
-
-        if (.not. c_associated(p)) then
-            s = ""
-            return
-        end if
-        n = int(c_strlen(p))
-        call c_f_pointer(p, chars, [n])
-        allocate(character(len=n) :: s)
-        do k = 1, n
-            s(k:k) = chars(k)
-        end do
-    end function f_str
 
 end module photo_image

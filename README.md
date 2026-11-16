@@ -22,7 +22,7 @@ border.
 
 ## Use
 
-fortphoto looks like your FortUI theme: `FORTUI_THEME=fluent|fluent-dark|classic`
+fortphoto looks like your FortUI theme: `FORTUI_THEME=fluent|fluent-light|fluent-dark|classic`
 or `theme = classic` in `~/.config/fortui/config`.
 
 ```sh
@@ -64,3 +64,23 @@ to the CUPS server or printer.
 
 - No colour management: photos are sent as sRGB and the printer converts them.
 - The window does not respond while a page is composed and sent.
+
+## Open dialog and platforms
+
+Choose **Open photo...**, or press Ctrl+O (Cmd+O on macOS). The chooser supports
+folder navigation, filename filtering and keyboard selection. Escape cancels.
+An unreadable or invalid photo leaves the current photo intact. Without a printer,
+the preview uses A4 paper.
+
+`FORTUI_THEME=fluent` follows the desktop light/dark preference and any schedule
+managed by the desktop. `fluent-light`, `fluent-dark` and `classic` stay fixed.
+The chooser also works with `FORTUI_BACKEND=tui`.
+
+Linux, Windows and macOS builds require fpm 0.13 or later and a C/Fortran compiler.
+Use MinGW-w64 UCRT64 on Windows and gfortran on macOS. Run `fpm run` with OpenMP
+compiler and linker flags (`-O2 -fopenmp` and `-fopenmp`). Native Windows and macOS
+windows use the CPU renderer. Printing uses CUPS/IPP on POSIX systems. The Windows
+build currently opens and previews photos without a native Windows print service.
+
+The shared FortUI chooser also supports browser file uploads. FortPhoto's desktop
+printer workflow is not a browser application.

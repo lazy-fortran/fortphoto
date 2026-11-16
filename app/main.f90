@@ -11,7 +11,8 @@ program fortphoto
         print_result_t, print_printers, print_capabilities, print_page, &
         print_page_pixels, print_available, PRINT_OK, PWG_QUALITY_DRAFT, &
         PWG_QUALITY_NORMAL, PWG_QUALITY_HIGH
-    use photo_image, only: image_t, image_load, image_shrink, image_glob
+    use photo_image, only: image_t, image_load, image_load_bytes, image_shrink, image_glob
+    use fortui_files, only: file_parent, file_name, file_home
     use photo_layout, only: layout_t, layout_compute, layout_render, rotate_cw, &
         layout_offset_by, MODE_FILL, MODE_FIT
     implicit none
@@ -25,6 +26,7 @@ program fortphoto
     end type size_t
 
     type(image_t) :: photo, small, dimmed
+    type(file_dialog_t) :: chooser
     character(len=:), allocatable :: path, status, folder
     character(len=:), allocatable :: files(:)
     type(print_printer_t), allocatable :: printers(:)
@@ -43,13 +45,14 @@ program fortphoto
 
     status = ""
     path = ""
-    folder = "."
+    folder = file_home()
+    call preview_paper()
     call command_argument_count_path()
     ! The window comes first; the printer is asked after the first frame, so a
     ! slow or absent printer never delays the start.
     allocate(printers(0))
     call ui_init("gui", 1280, 900, "fortphoto", stat=stat)
-    if (stat /= 0) error stop "fortphoto needs a graphical display"
+    if (stat /= 0) error stop "fortphoto could not initialize its UI backend"
     if (len(path) > 0) call open_photo(path)
     call ui_run(frame)
     call ui_shutdown()
@@ -78,6 +81,21 @@ contains
             printers_asked = .true.
             dirty = .true.
         end if
+        if (chooser%active) then
+            call file_dialog_show(chooser)
+            return
+        end if
+        if (chooser%status == FILE_ACCEPTED) then
+            if (allocated(chooser%bytes)) then
+                call open_photo_bytes(chooser%bytes, chooser%name)
+            else
+                call open_photo(chooser%path)
+            end if
+            chooser%status = FILE_IDLE
+
+        end if
+        if (ui_shortcut("mod+o", label="Open photo")) &
+            call file_dialog_open(chooser, "Open photo", folder, ".jpg,.jpeg,.png")
         if (ui_key_pressed(KEY_ESCAPE)) call ui_request_quit()
         if (ui_key_pressed(KEY_ARROW_RIGHT)) call step_photo(1)
         if (ui_key_pressed(KEY_ARROW_LEFT)) call step_photo(-1)
@@ -95,18 +113,16 @@ contains
     subroutine open_photo(p)
         character(*), intent(in) :: p
         character(len=:), allocatable :: msg
-        integer :: k
+        type(image_t) :: loaded
 
-        call image_load(p, photo, msg)
+        call image_load(p, loaded, msg)
         if (len(msg) > 0) then
             status = msg
-            photo%width = 0
             return
         end if
+        photo = loaded
         path = p
-        k = index(p, "/", back=.true.)
-        folder = "."
-        if (k > 1) folder = p(1:k - 1)
+        folder = file_parent(p)
         call image_glob(folder, files)
         call image_shrink(photo, PREVIEW_SOURCE, small)
         call make_dimmed()
@@ -116,6 +132,29 @@ contains
         status = ""
         dirty = .true.
     end subroutine open_photo
+
+    subroutine open_photo_bytes(bytes, name)
+        integer(int8), intent(in) :: bytes(:)
+        character(*), intent(in) :: name
+        type(image_t) :: loaded
+        character(:), allocatable :: message
+        call image_load_bytes(bytes, loaded, message)
+        if (len(message) > 0) then
+            status = message
+            return
+        end if
+        photo = loaded
+        path = name
+        if (allocated(files)) deallocate(files)
+        allocate(character(1) :: files(0))
+        call image_shrink(photo, PREVIEW_SOURCE, small)
+        call make_dimmed()
+        ox = 0.0
+        oy = 0.0
+        zoom_pct = 100
+        status = ""
+        dirty = .true.
+    end subroutine
 
     subroutine step_photo(dir)
         integer, intent(in) :: dir
@@ -158,12 +197,30 @@ contains
 
     ! --- printers -----------------------------------------------------------------
 
+    subroutine preview_paper()
+        if (allocated(caps%media)) deallocate(caps%media)
+        if (.not. allocated(caps%media_types)) allocate(caps%media_types(0))
+        if (.not. allocated(caps%sources)) allocate(caps%sources(0))
+        if (.not. allocated(caps%qualities)) allocate(caps%qualities(0))
+        if (.not. allocated(caps%markers)) allocate(caps%markers(0))
+        allocate(caps%media(1))
+        caps%media(1)%name = "iso_a4_210x297mm"
+        caps%media(1)%label = "A4 preview"
+        caps%media(1)%width = 21000
+        caps%media(1)%length = 29700
+        caps%media(1)%source = ""
+        caps%media(1)%media_type = ""
+        if (allocated(sizes)) deallocate(sizes)
+        allocate(sizes(1))
+        sizes(1)%plain = 1
+        paper = 1
+    end subroutine preview_paper
+
     subroutine load_printers()
         type(print_result_t) :: res
         integer :: k
 
         call print_printers(printers, res)
-        if (res%status /= PRINT_OK) status = res%message
         printer = 0
         do k = 1, size(printers)
             if (printers(k)%is_default .or. printer == 0) printer = k
@@ -213,6 +270,7 @@ contains
             end if
         end do
         if (paper == 0 .and. size(sizes) > 0) paper = 1
+        if (paper == 0) call preview_paper()
         call preselect_for_paper()
         quality_tab = 3
         dirty = .true.
@@ -364,11 +422,10 @@ contains
 
         call column_begin(6.0)
         call text("fortphoto", style=UI_TITLE)
-        call row_begin(6.0)
-        if (text_input("path", path, placeholder="photo.jpg", submitted=go, &
-            width=PANEL_W - 112.0)) continue
-        if (button("open", "Open") .or. go) call open_photo(trim(path))
-        call row_end()
+        call file_open_button("open", "Open photo...", chooser, "Open photo", &
+            folder, ".jpg,.jpeg,.png", width=PANEL_W - 8.0)
+        if (len(path) > 0) call text(file_name(path), style=UI_CAPTION, &
+            width=PANEL_W - 8.0, ellipsis=.true.)
         call row_begin(6.0)
         if (button("prev", "<", width=40.0)) call step_photo(-1)
         if (button("next", ">", width=40.0)) call step_photo(1)
@@ -383,7 +440,7 @@ contains
         else if (.not. printers_asked) then
             call text("Looking for printers...", style=UI_CAPTION)
         else if (size(printers) == 0) then
-            call text("No printer is set up.", tone=UI_TONE_NEGATIVE)
+            call text("No printer is set up. Preview uses A4.", style=UI_CAPTION, width=PANEL_W - 8.0)
         else
             if (size(printers) > 1) then
                 call text("Printer", style=UI_HEADING)
