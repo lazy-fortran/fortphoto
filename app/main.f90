@@ -74,6 +74,7 @@ contains
     end subroutine command_argument_count_path
 
     subroutine frame()
+        call file_dialog_poll(chooser)
         frames = frames + 1
         if (frames == 1) call ui_request_frame()
         if (frames == 2) then
