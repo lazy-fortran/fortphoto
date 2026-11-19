@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FortPhoto</title>
+  <link rel="stylesheet" href="fortui.css">
+  <style>
+    :root { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; color: #1d2328; background: #eceff1; }
+    body { margin: 0; }
+    #app { padding: 8px; box-sizing: border-box; }
+    button { font: inherit; border: 1px solid #c3ccd2; border-radius: 6px; background: #fff; padding: 3px 10px; min-height: 28px; cursor: pointer; }
+    button:hover:not(:disabled) { background: #eef3f6; }
+    button:disabled { opacity: .45; cursor: default; }
+    button[aria-pressed=true], button[aria-selected=true] { background: #dbe6ee; border-color: #8ea4b3; font-weight: 600; }
+    canvas.fui { border-radius: 4px; touch-action: none; }
+    input[type=range] { accent-color: #1d2328; }
+    .fui[data-style="3"] { margin-top: 6px; }
+    .fui-row > .fui-col { align-self: flex-start; }
+  </style>
+</head>
+<body>
+  <div id="app" class="fui-root fui-box fui-col"></div>
+  <script src="main.js"></script>
+</body>
+</html>

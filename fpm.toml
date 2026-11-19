@@ -1,10 +1,10 @@
 name = "fortphoto"
-version = "0.0.1"
+version = "0.1.0"
 license = "MIT"
 author = "Christopher Albert"
 maintainer = "albert@tugraz.at"
 copyright = "Copyright 2026, Christopher Albert"
-description = "Photo printing with an exact preview: fill and crop or fit, borderless"
+description = "Photo editor: selections, crop, straighten, levels, colour, sharpen, resize, pen, export and exact-preview printing"
 
 [build]
 auto-executables = true
@@ -19,8 +19,10 @@ source-form = "free"
 cpp.suffixes = ["f90"]
 
 [dependencies]
-fortui = { git = "https://github.com/lazy-fortran/fortui.git", rev = "8ad1ba348cc26789763b62cc3e1d2105ea411dc8" }
-fortimg = { git = "https://github.com/lazy-fortran/fortimg.git", rev = "22716c3ed5424e1e463bde5e6bc0daf40d78cb2e" }
+fortui = { git = "https://github.com/lazy-fortran/fortui.git", rev = "6eb88f1fd038d982bdb0a046da40790bf1cc6cb4" }
+fortimg = { git = "https://github.com/lazy-fortran/fortimg.git", rev = "738942a2d16a288baee4c6d6db1779fc5c05363b" }
+fortink = { git = "https://github.com/lazy-fortran/fortink.git", rev = "1a61e4ddd9835355f51c47db69642a7145be4f83" }
+fortpix = { git = "https://github.com/lazy-fortran/fortpix.git", rev = "d56ed2881545dc1d8b3988f1a2a7f7cf844b1dcb" }
 
 [features]
 platform.macos.preprocess.cpp.macros = ["__APPLE__"]

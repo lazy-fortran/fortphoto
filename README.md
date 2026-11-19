@@ -1,8 +1,29 @@
 # fortphoto
 
-fortphoto opens a photo, shows exactly how it will land on the paper, and prints
-it. The preview and the print come from the same page computation, so what you
-see is what the printer gets.
+fortphoto is a photo editor for the work before printing or publishing:
+selections, crop, rotate and straighten, levels, colour, sharpening, resizing,
+pen annotations, JPEG and PNG export, and printing with an exact preview.
+
+- **Edit list.** Every edit is a step applied to the original, so any step can
+  be undone or redone, also from the History tab. The screen shows a preview
+  of the steps; export and print render them at full resolution.
+- **Select.** Rectangle, ellipse, lasso and magic wand (tolerance, contiguous
+  or global), combined as new, add, subtract or intersect. Levels, colour and
+  sharpening apply inside the selection; Crop to selection crops to its box.
+- **Crop and turn.** Crop freely or at 1:1, 3:2, 4:3, 16:9 or the photo's own
+  ratio; rotate by quarter turns, flip, and straighten by up to 15 degrees
+  with the largest crop that has no empty corners.
+- **Tone and colour.** Live histogram; black point, midtones and white point
+  with Auto levels; exposure, brightness, contrast, saturation, temperature
+  and tint; a white-balance picker; unsharp masking.
+- **Size.** Pixel size with or without proportions, resolution and the print
+  size it gives; Lanczos resampling.
+- **Pen.** The notebook pen of FortShell in six colours.
+- **Export and print.** JPEG (quality 92, resolution stored) or PNG next to
+  the photo, never replacing a file. Print opens the exact preview:
+
+The print preview and the print come from the same page computation, so what
+you see is what the printer gets.
 
 - **Fill and crop** covers the sheet and cuts off what sticks out, for example
   4:3 photos on 3:2 paper (10 x 15 cm). Drag the photo to choose what stays, and
@@ -30,9 +51,16 @@ fortphoto photo.jpg          # or open one from the file manager: Open With
 fortphoto --hold photo.jpg   # print jobs wait in the queue: lp -i JOB -H resume
 ```
 
-Left and right arrows step through the JPEG and PNG files in the photo's folder.
+Page Up and Page Down step through the JPEG and PNG files in the photo's folder.
+Ctrl+O opens, Ctrl+Z and Ctrl+Shift+Z undo and redo, Ctrl+D deselects, Ctrl+P
+prints, Enter applies a crop and Escape cancels a gesture or the selection.
 
 ## Build and install
+
+Pixel operations come from [FortPix](https://code.tugraz.at/yard/fortpix),
+files from [FortImg](https://code.tugraz.at/yard/fortimg), the pen model from
+[FortInk](https://code.tugraz.at/yard/fortink) and the interface from
+[FortUI](https://code.tugraz.at/yard/fortui).
 
 ```sh
 make            # build
@@ -43,6 +71,13 @@ make install    # ~/.local/bin/fortphoto and a desktop entry for JPEG and PNG
 `make install` registers fortphoto for JPEG and PNG files, so file managers
 such as Thunar offer it under "Open With". fortphoto needs a graphical display
 and a printer set up in CUPS; it was tested with an IPP Everywhere queue.
+
+## Browser
+
+`tools/build-web.sh` builds the editor for the browser into `build/web` with
+LFortran and Emscripten, from checkouts of the pinned dependencies next to this
+repository. Files open through the browser's picker and exports download;
+printing needs the desktop application.
 
 ## Dependencies and licences
 
