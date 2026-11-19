@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
 Name=fortphoto
-GenericName=Photo printing
-Comment=Print a photo borderless, filled and cropped or fitted, with an exact preview
+GenericName=Photo editor
+Comment=Crop, rotate, select, adjust tones and colours, annotate, export and print photos
 Exec=fortphoto %f
-Icon=printer
+Icon=image-x-generic
 Terminal=false
 Categories=Graphics;Photography;
 MimeType=image/jpeg;image/png;
