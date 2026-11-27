@@ -57,10 +57,10 @@ prints, Enter applies a crop and Escape cancels a gesture or the selection.
 
 ## Build and install
 
-Pixel operations come from [FortPix](https://code.tugraz.at/yard/fortpix),
-files from [FortImg](https://code.tugraz.at/yard/fortimg), the pen model from
-[FortInk](https://code.tugraz.at/yard/fortink) and the interface from
-[FortUI](https://code.tugraz.at/yard/fortui).
+Pixel operations come from [FortPix](https://github.com/lazy-fortran/fortpix),
+files from [FortImg](https://github.com/lazy-fortran/fortimg), the pen model from
+[FortInk](https://github.com/lazy-fortran/fortink) and the interface from
+[FortUI](https://github.com/lazy-fortran/fortui).
 
 ```sh
 make            # build
